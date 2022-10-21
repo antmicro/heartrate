@@ -67,6 +67,7 @@ def trace(
         host='127.0.0.1',
         browser=False,
         daemon=False,
+        function_calls=False,
 ):
     calling_frame = inspect.currentframe().f_back
     calling_file = calling_frame.f_code.co_filename
@@ -81,6 +82,7 @@ def trace(
     thread_ident = threading.get_ident()
     queues = defaultdict(lambda: deque(maxlen=2 ** levels))
     totals = defaultdict(Counter)
+    calls = function_calls
 
     app = Flask(__name__)
 
@@ -198,15 +200,26 @@ def trace(
 
     def trace_func(frame, event, _arg):
         filename = frame.f_code.co_filename
+        lineno = frame.f_lineno
         if event == "call":
+            if calls: # trace function calls, not executed lines
+
+                source = Source.for_filename(filename).text
+                if (filename[0] != "<" and len(source) > 0):
+                    line = source.splitlines()[lineno-1].strip()
+                    if (not (line.startswith("class") or line.startswith("#") or line.startswith("import ") or line.startswith("from "))):
+                        queues[filename].append(lineno)
+                        totals[filename][lineno] += 1
+                        Source.lazycache(frame)
+
             if include_file(filename):
                 return trace_func
 
         elif event == "line":
-            lineno = frame.f_lineno
-            queues[filename].append(lineno)
-            totals[filename][lineno] += 1
-            Source.lazycache(frame)
+            if not calls: # we are tracing executed lines
+                queues[filename].append(lineno)
+                totals[filename][lineno] += 1
+                Source.lazycache(frame)
 
     calling_frame.f_trace = trace_func
     sys.settrace(trace_func)

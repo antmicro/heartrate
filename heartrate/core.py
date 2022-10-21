@@ -90,7 +90,11 @@ def trace(
 
     @app.route('/')
     def index():
-        return render_template('index.html', files=sorted(queues.keys()))
+        queues_copy = queues
+        files_with_lengths = []
+        for q in queues_copy:
+            files_with_lengths.append({'name': q, 'len': len(queues_copy[q])})
+        return render_template('index.html', files=sorted(files_with_lengths, key=lambda f: f['name']))
 
     @app.route('/file/')
     def file_view():

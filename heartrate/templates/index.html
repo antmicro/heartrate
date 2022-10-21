@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block body %}
     <ul class="no-bullet">
-        {% for full in files %}
+        {% for f in files %}
             <li>
-                <a href="{{ url_for('file_view', filename=full) }}">
+                <a href="{{ url_for('file_view', filename=f['name']) }}">
                     <i class="glyphicon glyphicon-file"></i>
-                    {{ full }}
+		    {{ f['name'] }} ({{f['len']}})
                 </a>
             </li>
         {% endfor %}
